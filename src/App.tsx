@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMediaPipe } from './hooks/useMediaPipe';
 import { detectSnap, detectKatanaDraw } from './utils/gestureDetection';
 import { playSnapSound, playSwordDrawSound } from './utils/audio';
+import { ThreeScene } from './components/ThreeScene';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import './index.css';
 
@@ -102,11 +103,7 @@ function drawFrame(
   canvas: HTMLCanvasElement,
   video: HTMLVideoElement,
   segMask: Uint8ClampedArray | null,
-  hands: NormalizedLandmark[][] | null,
-  poses: NormalizedLandmark[][] | null,
   bgId: BgId,
-  armorId: ArmorId,
-  katanaId: KatanaId,
 ) {
   const W = canvas.width;
   const H = canvas.height;
@@ -154,99 +151,6 @@ function drawFrame(
   }
 
   // ── 2. Samurai Armor ─────────────────────────────────────────────────
-  if (
-    armorImg &&
-    armorImg.complete &&
-    armorImg.naturalWidth > 0 &&
-    poses &&
-    poses.length > 0
-  ) {
-    const processedArmor = getProcessed(armorImg);
-    if (processedArmor) {
-      const pose = poses[0];
-      const ls = pose[11];
-      const rs = pose[12];
-      const lh = pose[23];
-      const rh = pose[24];
-      if (ls && rs) {
-        // Shoulder center (mirrored x)
-        const cx = (1 - (ls.x + rs.x) / 2) * W;
-        const cy = ((ls.y + rs.y) / 2) * H;
-        const hipCY = lh && rh ? ((lh.y + rh.y) / 2) * H : cy + H * 0.45;
-        const bodyH = Math.max(hipCY - cy, 120);
-        // Make armor wider than shoulder span so it looks substantial
-        const drawW = Math.max(d2(ls, rs) * W * 3.2, 220);
-        // Armor height: from slightly above shoulders down to hips
-        const drawH = bodyH * 2.0;
-        // Anchor: top of armor image = shoulder level (armor hangs down from shoulders)
-        ctx.save();
-        ctx.globalAlpha = 1.0; // Fully opaque
-        // Draw armor centered horizontally, starting from shoulder level
-        ctx.drawImage(
-          processedArmor,
-          cx - drawW / 2,
-          cy - drawH * 0.12,
-          drawW,
-          drawH,
-        );
-        ctx.restore();
-      }
-    }
-  }
-
-  // ── 3. Katana ──────────────────────────────────────────────────
-  if (
-    katanaImg &&
-    katanaImg.complete &&
-    katanaImg.naturalWidth > 0 &&
-    hands &&
-    hands.length > 0
-  ) {
-    const processedKatana = getProcessed(katanaImg);
-    if (processedKatana) {
-      const hand = hands[0];
-      const wrist = hand[0];
-      const indexBase = hand[5];
-      const pinkyBase = hand[17];
-      if (wrist && indexBase && pinkyBase) {
-        const wx = (1 - wrist.x) * W;
-        const wy = wrist.y * H;
-        const ibx = (1 - indexBase.x) * W;
-        const iby = indexBase.y * H;
-        const pbx = (1 - pinkyBase.x) * W;
-        const pby = pinkyBase.y * H;
-
-        // Blade points from pinky knuckle (bottom of fist) through index knuckle (top of fist)
-        const dx = ibx - pbx;
-        const dy = iby - pby;
-        const angle = Math.atan2(dy, dx) + Math.PI / 2;
-
-        // Center the hilt at the middle of the fist
-        const hiltX = (ibx + pbx) / 2;
-        const hiltY = (iby + pby) / 2;
-
-        const kH = Math.min(H * 0.8, 600); // Made sword larger
-        const kW = kH * 0.25;
-
-        ctx.save();
-        ctx.translate(hiltX, hiltY);
-        ctx.rotate(angle);
-        ctx.shadowColor = katanaOpt.glow;
-        ctx.shadowBlur = 35;
-        ctx.globalAlpha = 1.0;
-        ctx.drawImage(processedKatana, -kW / 2, -kH + kH * 0.18, kW, kH);
-        ctx.globalAlpha = 0.4;
-        ctx.shadowBlur = 65;
-        ctx.drawImage(
-          processedKatana,
-          -kW * 0.75,
-          -kH + kH * 0.16,
-          kW * 1.5,
-          kH * 1.04,
-        );
-        ctx.restore();
-      }
-    }
   }
 }
 // ─── SIDEBAR PICKER ITEM ──────────────────────────────────────────────────
@@ -306,6 +210,12 @@ export default function App() {
   const lastSnapTime = useRef(0);
   const lastDrawTime = useRef(0);
   const rafId = useRef(0);
+  
+  // Ref to hold high-frequency landmark data without triggering React re-renders
+  const landmarksRef = useRef<{ hands: NormalizedLandmark[][] | null; poses: NormalizedLandmark[][] | null }>({
+    hands: null,
+    poses: null
+  });
 
   useEffect(() => {
     bgIdRef.current = bgId;
@@ -385,6 +295,12 @@ export default function App() {
 
       const hands = handLandmarker.detectForVideo(video, ts).landmarks ?? [];
       const poses = poseLandmarker.detectForVideo(video, ts).landmarks ?? [];
+      
+      // Update landmarks reference for 3D components to read instantly
+      landmarksRef.current = {
+        hands: hands.length > 0 ? hands : null,
+        poses: poses.length > 0 ? poses : null
+      };
 
       const now = Date.now();
       if (
@@ -412,11 +328,7 @@ export default function App() {
         canvas,
         video,
         segMask,
-        hands.length > 0 ? hands : null,
-        poses.length > 0 ? poses : null,
         bgIdRef.current,
-        armorIdRef.current,
-        katanaIdRef.current,
       );
 
       rafId.current = requestAnimationFrame(loop);
@@ -529,7 +441,19 @@ export default function App() {
           muted
           className="webcam-video"
         />
+        {/* 2D Canvas for Segmentation Background Swap */}
         <canvas ref={canvasRef} className="ar-canvas" />
+
+        {/* 3D WebGL Canvas for Samurai Armor and Katana */}
+        {isLoaded && (
+          <ThreeScene 
+            landmarksRef={landmarksRef}
+            isSamuraiMode={armorId !== 'none'}
+            isKatanaDrawn={katanaId !== 'none'}
+            armorId={armorId}
+            katanaId={katanaId}
+          />
+        )}
 
         {flash && <div className={`flash-vfx ${flash}`} key={Date.now()} />}
 
