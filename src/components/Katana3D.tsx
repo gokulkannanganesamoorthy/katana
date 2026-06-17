@@ -26,11 +26,11 @@ export const Katana3D: React.FC<Katana3DProps> = ({
   const dragonKatana = useGLTF('/models/Dragon Katana Oni Koroshi.glb');
   
   // Model Configuration Dictionary
-  // If katana covers the screen, reduce scale to [0.1, 0.1, 0.1] or lower.
-  // We apply rotation so the blade points along the Y-axis.
+  // scale of 0.5 makes it 500 pixels long (assuming it's a 100 unit / 1 meter model).
+  // Models might need a rotOffset (e.g. Math.PI / 2) to align the blade with the hand's Y axis.
   const configs: Record<string, { scale: [number, number, number], posOffset: [number, number, number], rotOffset: [number, number, number], gltf: any }> = {
-    'normal': { scale: [0.05, 0.05, 0.05], posOffset: [0, 0, 0], rotOffset: [0, 0, 0], gltf: normalKatana },
-    'red': { scale: [0.05, 0.05, 0.05], posOffset: [0, 0, 0], rotOffset: [0, 0, 0], gltf: dragonKatana },
+    'normal': { scale: [1, 1, 1], posOffset: [0, 0, 0], rotOffset: [Math.PI / 2, 0, 0], gltf: normalKatana },
+    'red': { scale: [0.5, 0.5, 0.5], posOffset: [0, 0, 0], rotOffset: [Math.PI / 2, 0, 0], gltf: dragonKatana },
   };
 
   const config = configs[katanaId] || configs['normal'];

@@ -25,13 +25,13 @@ export const Armor3D: React.FC<Armor3DProps> = ({
   const armorBlack = useGLTF('/models/Samurai (2).glb');
   const armorCyber = useGLTF('/models/Cyber Samurai.glb');
   
-  // Model Configuration Dictionary (tune these values!)
-  // If the model is standing above the head, the Y position offset needs to be negative (e.g. -200 or -400)
-  // If the model is too big/small, adjust scale.
+  // Model Configuration Dictionary
+  // Armor is usually centered at the feet. Since we anchor to the shoulders, 
+  // we must move the model DOWN along the Y axis by its shoulder height.
   const configs: Record<string, { scale: [number, number, number], posOffset: [number, number, number], rotOffset: [number, number, number], gltf: any }> = {
-    'white': { scale: [0.05, 0.05, 0.05], posOffset: [0, -300, 0], rotOffset: [0, Math.PI, 0], gltf: armorWhite },
-    'black': { scale: [0.05, 0.05, 0.05], posOffset: [0, -300, 0], rotOffset: [0, Math.PI, 0], gltf: armorBlack },
-    'cyber': { scale: [0.05, 0.05, 0.05], posOffset: [0, -300, 0], rotOffset: [0, Math.PI, 0], gltf: armorCyber },
+    'white': { scale: [1.2, 1.2, 1.2], posOffset: [0, -180, 0], rotOffset: [0, Math.PI, 0], gltf: armorWhite },
+    'black': { scale: [1.2, 1.2, 1.2], posOffset: [0, -180, 0], rotOffset: [0, Math.PI, 0], gltf: armorBlack },
+    'cyber': { scale: [1.2, 1.2, 1.2], posOffset: [0, -180, 0], rotOffset: [0, Math.PI, 0], gltf: armorCyber },
   };
 
   const config = configs[armorId] || configs['white'];
@@ -60,40 +60,26 @@ export const Armor3D: React.FC<Armor3DProps> = ({
 
         const vLS = getVec3(ls);
         const vRS = getVec3(rs);
-        const vLH = getVec3(lh);
-        const vRH = getVec3(rh);
 
-        // Center of the chest
-        const topMid = new THREE.Vector3()
-          .addVectors(vLS, vRS)
-          .multiplyScalar(0.5);
-        const botMid = new THREE.Vector3()
-          .addVectors(vLH, vRH)
-          .multiplyScalar(0.5);
-        const chestCenter = new THREE.Vector3()
-          .addVectors(topMid, botMid)
-          .multiplyScalar(0.5);
-
-        groupRef.current.position.copy(chestCenter);
-
-        // Scale based on shoulder width and torso height
-        const width = vLS.distanceTo(vRS) * 1.6; // Wider than shoulders
-        const height = topMid.distanceTo(botMid) * 1.2; // Torso length
-        const depth = width * 0.6; // Human proportion approx
-
-        groupRef.current.scale.set(width, height, depth);
+        // Center between shoulders (ignore hips as they are often off-camera)
+        const topMid = new THREE.Vector3().addVectors(vLS, vRS).multiplyScalar(0.5);
+        
+        groupRef.current.position.copy(topMid);
 
         // Basic rotation: look at normal of the chest plane
         // Vector from right shoulder to left shoulder (mirrored space, so x is flipped)
         const xDir = new THREE.Vector3().subVectors(vLS, vRS).normalize();
-        // Vector from bottom mid to top mid
-        const yDir = new THREE.Vector3().subVectors(topMid, botMid).normalize();
-
+        // Assume straight up for Y dir since hips are unreliable
+        const yDir = new THREE.Vector3(0, 1, 0);
+        
         // Z direction is cross product (pointing OUT of the chest towards camera)
         const zDir = new THREE.Vector3().crossVectors(xDir, yDir).normalize();
-
+        
+        // Recompute true Y to maintain orthogonality
+        const trueYDir = new THREE.Vector3().crossVectors(zDir, xDir).normalize();
+        
         // Create rotation matrix
-        const matrix = new THREE.Matrix4().makeBasis(xDir, yDir, zDir);
+        const matrix = new THREE.Matrix4().makeBasis(xDir, trueYDir, zDir);
         const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
         groupRef.current.quaternion.copy(quaternion);
       } else {
