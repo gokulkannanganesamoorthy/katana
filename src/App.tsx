@@ -8,36 +8,17 @@ import './index.css';
 
 // ─── ASSET CATALOGUE ──────────────────────────────────────────────────────
 const KATANA_OPTIONS = [
-  { id: 'none', label: 'None', emoji: '✕', src: null, glow: '#00f5ff' },
-  {
-    id: 'cyan',
-    label: 'Phantom',
-    emoji: '🗡️',
-    src: '/katana.png',
-    glow: '#00f5ff',
-  },
-  {
-    id: 'red',
-    label: 'Inferno',
-    emoji: '🔥',
-    src: '/katana_red.png',
-    glow: '#ff3300',
-  },
-  {
-    id: 'gold',
-    label: 'Divine',
-    emoji: '⚡',
-    src: '/katana_gold.png',
-    glow: '#ffd700',
-  },
+  { id: 'none', label: 'None', emoji: '✕', glow: '#fff' },
+  { id: 'normal', label: 'Standard', emoji: '🗡️', glow: '#00f5ff' },
+  { id: 'red', label: 'Oni Koroshi', emoji: '🔥', glow: '#ff3300' },
 ] as const;
 type KatanaId = (typeof KATANA_OPTIONS)[number]['id'];
 
 const ARMOR_OPTIONS = [
-  { id: 'none', label: 'None', emoji: '✕', src: null },
-  { id: 'red', label: 'Warlord', emoji: '🥷', src: '/samurai.png' },
-  { id: 'white', label: 'Noble', emoji: '🤍', src: '/armor_white.png' },
-  { id: 'black', label: 'Oni', emoji: '👹', src: '/armor_black.png' },
+  { id: 'none', label: 'None', emoji: '✕' },
+  { id: 'white', label: 'Samurai V1', emoji: '🤍' },
+  { id: 'black', label: 'Samurai V2', emoji: '🖤' },
+  { id: 'cyber', label: 'Cyber Samurai', emoji: '🤖' },
 ] as const;
 type ArmorId = (typeof ARMOR_OPTIONS)[number]['id'];
 
@@ -59,7 +40,7 @@ function loadImg(src: string): HTMLImageElement {
   }
   return imgCache[src];
 }
-[...KATANA_OPTIONS, ...ARMOR_OPTIONS, ...BG_OPTIONS].forEach(
+BG_OPTIONS.forEach(
   (o) => o.src && loadImg(o.src),
 );
 
@@ -112,11 +93,6 @@ function drawFrame(
   const bgImg = BG_OPTIONS.find((o) => o.id === bgId)?.src
     ? loadImg(BG_OPTIONS.find((o) => o.id === bgId)!.src!)
     : null;
-  const armorImg = ARMOR_OPTIONS.find((o) => o.id === armorId)?.src
-    ? loadImg(ARMOR_OPTIONS.find((o) => o.id === armorId)!.src!)
-    : null;
-  const katanaOpt = KATANA_OPTIONS.find((o) => o.id === katanaId)!;
-  const katanaImg = katanaOpt.src ? loadImg(katanaOpt.src) : null;
 
   // KEY FIX: Draw RAW (non-mirrored) video to offscreen.
   // The segmentation mask from MediaPipe is also in raw video space,
@@ -151,8 +127,8 @@ function drawFrame(
   }
 
   // ── 2. Samurai Armor ─────────────────────────────────────────────────
-  }
 }
+
 // ─── SIDEBAR PICKER ITEM ──────────────────────────────────────────────────
 interface PickerItemProps {
   active: boolean;
@@ -210,11 +186,14 @@ export default function App() {
   const lastSnapTime = useRef(0);
   const lastDrawTime = useRef(0);
   const rafId = useRef(0);
-  
+
   // Ref to hold high-frequency landmark data without triggering React re-renders
-  const landmarksRef = useRef<{ hands: NormalizedLandmark[][] | null; poses: NormalizedLandmark[][] | null }>({
+  const landmarksRef = useRef<{
+    hands: NormalizedLandmark[][] | null;
+    poses: NormalizedLandmark[][] | null;
+  }>({
     hands: null,
-    poses: null
+    poses: null,
   });
 
   useEffect(() => {
@@ -295,11 +274,11 @@ export default function App() {
 
       const hands = handLandmarker.detectForVideo(video, ts).landmarks ?? [];
       const poses = poseLandmarker.detectForVideo(video, ts).landmarks ?? [];
-      
+
       // Update landmarks reference for 3D components to read instantly
       landmarksRef.current = {
         hands: hands.length > 0 ? hands : null,
-        poses: poses.length > 0 ? poses : null
+        poses: poses.length > 0 ? poses : null,
       };
 
       const now = Date.now();
@@ -324,12 +303,7 @@ export default function App() {
         triggerFlash('cyan');
       }
 
-      drawFrame(
-        canvas,
-        video,
-        segMask,
-        bgIdRef.current,
-      );
+      drawFrame(canvas, video, segMask, bgIdRef.current);
 
       rafId.current = requestAnimationFrame(loop);
     };
@@ -447,7 +421,7 @@ export default function App() {
         {/* 3D WebGL Canvas for Samurai Armor and Katana */}
         {isLoaded && (
           <React.Suspense fallback={null}>
-            <ThreeScene 
+            <ThreeScene
               landmarksRef={landmarksRef}
               isSamuraiMode={armorId !== 'none'}
               isKatanaDrawn={katanaId !== 'none'}

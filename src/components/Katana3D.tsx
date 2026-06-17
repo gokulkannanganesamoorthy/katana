@@ -1,16 +1,23 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { NormalizedLandmark } from '@mediapipe/tasks-vision';
+import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
 
 interface Katana3DProps {
-  landmarksRef: React.MutableRefObject<{ hands: NormalizedLandmark[][] | null; poses: NormalizedLandmark[][] | null }>;
+  landmarksRef: React.MutableRefObject<{
+    hands: NormalizedLandmark[][] | null;
+    poses: NormalizedLandmark[][] | null;
+  }>;
   isActive: boolean;
   katanaId: string;
 }
 
-export const Katana3D: React.FC<Katana3DProps> = ({ landmarksRef, isActive, katanaId }) => {
+export const Katana3D: React.FC<Katana3DProps> = ({
+  landmarksRef,
+  isActive,
+  katanaId,
+}) => {
   const groupRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
@@ -18,42 +25,58 @@ export const Katana3D: React.FC<Katana3DProps> = ({ landmarksRef, isActive, kata
   const normalKatana = useGLTF('/models/Katana Japanese Sword.glb');
   const dragonKatana = useGLTF('/models/Dragon Katana Oni Koroshi.glb');
   
-  // Select model based on katanaId
-  const currentGLTF = katanaId === 'red' ? dragonKatana : normalKatana;
+  // Model Configuration Dictionary
+  // If katana covers the screen, reduce scale to [0.1, 0.1, 0.1] or lower.
+  // We apply rotation so the blade points along the Y-axis.
+  const configs: Record<string, { scale: [number, number, number], posOffset: [number, number, number], rotOffset: [number, number, number], gltf: any }> = {
+    'normal': { scale: [0.05, 0.05, 0.05], posOffset: [0, 0, 0], rotOffset: [0, 0, 0], gltf: normalKatana },
+    'red': { scale: [0.05, 0.05, 0.05], posOffset: [0, 0, 0], rotOffset: [0, 0, 0], gltf: dragonKatana },
+  };
+
+  const config = configs[katanaId] || configs['normal'];
+  const currentGLTF = config.gltf;
 
   useFrame(() => {
     if (!groupRef.current) return;
     const hands = landmarksRef.current.hands;
-    
+
     if (isActive && hands && hands.length > 0) {
       const hand = hands[0];
       const indexBase = hand[5];
       const pinkyBase = hand[17];
-      
+
       if (indexBase && pinkyBase) {
         groupRef.current.visible = true;
-        
+
         // Convert normalized coordinates to 3D world space
         // Note: x is mirrored: (0.5 - x) instead of (x - 0.5)
-        const getVec3 = (lm: NormalizedLandmark) => new THREE.Vector3(
-          (0.5 - lm.x) * viewport.width,
-          (0.5 - lm.y) * viewport.height,
-          -lm.z * viewport.width // scale Z roughly the same as X for proportion
-        );
+        const getVec3 = (lm: NormalizedLandmark) =>
+          new THREE.Vector3(
+            (0.5 - lm.x) * viewport.width,
+            (0.5 - lm.y) * viewport.height,
+            -lm.z * viewport.width, // scale Z roughly the same as X for proportion
+          );
 
         const vIndex = getVec3(indexBase);
         const vPinky = getVec3(pinkyBase);
 
         // Position at the midpoint of the knuckles (the fist)
-        const midpoint = new THREE.Vector3().addVectors(vIndex, vPinky).multiplyScalar(0.5);
+        const midpoint = new THREE.Vector3()
+          .addVectors(vIndex, vPinky)
+          .multiplyScalar(0.5);
         groupRef.current.position.copy(midpoint);
 
         // Calculate direction from pinky to index (the blade direction)
-        const direction = new THREE.Vector3().subVectors(vIndex, vPinky).normalize();
-        
+        const direction = new THREE.Vector3()
+          .subVectors(vIndex, vPinky)
+          .normalize();
+
         // Align the group's Y-axis to point in the blade direction
         const up = new THREE.Vector3(0, 1, 0);
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(
+          up,
+          direction,
+        );
         groupRef.current.quaternion.copy(quaternion);
       } else {
         groupRef.current.visible = false;
@@ -70,10 +93,11 @@ export const Katana3D: React.FC<Katana3DProps> = ({ landmarksRef, isActive, kata
         We might need to adjust scale and rotation manually if the downloaded
         model doesn't have the blade pointing exactly along the Y-axis.
       */}
-      <primitive 
-        object={currentGLTF.scene.clone()} 
-        scale={[2, 2, 2]} 
-        position={[0, 0, 0]} 
+      <primitive
+        object={currentGLTF.scene.clone()}
+        scale={config.scale}
+        position={config.posOffset}
+        rotation={config.rotOffset}
       />
     </group>
   );

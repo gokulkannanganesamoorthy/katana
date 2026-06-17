@@ -1,23 +1,41 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { NormalizedLandmark } from '@mediapipe/tasks-vision';
+import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
 
 interface Armor3DProps {
-  landmarksRef: React.MutableRefObject<{ hands: NormalizedLandmark[][] | null; poses: NormalizedLandmark[][] | null }>;
+  landmarksRef: React.MutableRefObject<{
+    hands: NormalizedLandmark[][] | null;
+    poses: NormalizedLandmark[][] | null;
+  }>;
   isActive: boolean;
   armorId: string;
 }
 
-export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorId }) => {
+export const Armor3D: React.FC<Armor3DProps> = ({
+  landmarksRef,
+  isActive,
+  armorId,
+}) => {
   const groupRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
   const armorWhite = useGLTF('/models/Samurai (1).glb');
   const armorBlack = useGLTF('/models/Samurai (2).glb');
+  const armorCyber = useGLTF('/models/Cyber Samurai.glb');
   
-  const currentGLTF = armorId === 'black' ? armorBlack : armorWhite;
+  // Model Configuration Dictionary (tune these values!)
+  // If the model is standing above the head, the Y position offset needs to be negative (e.g. -200 or -400)
+  // If the model is too big/small, adjust scale.
+  const configs: Record<string, { scale: [number, number, number], posOffset: [number, number, number], rotOffset: [number, number, number], gltf: any }> = {
+    'white': { scale: [0.05, 0.05, 0.05], posOffset: [0, -300, 0], rotOffset: [0, Math.PI, 0], gltf: armorWhite },
+    'black': { scale: [0.05, 0.05, 0.05], posOffset: [0, -300, 0], rotOffset: [0, Math.PI, 0], gltf: armorBlack },
+    'cyber': { scale: [0.05, 0.05, 0.05], posOffset: [0, -300, 0], rotOffset: [0, Math.PI, 0], gltf: armorCyber },
+  };
+
+  const config = configs[armorId] || configs['white'];
+  const currentGLTF = config.gltf;
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -33,11 +51,12 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
       if (ls && rs && lh && rh) {
         groupRef.current.visible = true;
 
-        const getVec3 = (lm: NormalizedLandmark) => new THREE.Vector3(
-          (0.5 - lm.x) * viewport.width,
-          (0.5 - lm.y) * viewport.height,
-          -lm.z * viewport.width
-        );
+        const getVec3 = (lm: NormalizedLandmark) =>
+          new THREE.Vector3(
+            (0.5 - lm.x) * viewport.width,
+            (0.5 - lm.y) * viewport.height,
+            -lm.z * viewport.width,
+          );
 
         const vLS = getVec3(ls);
         const vRS = getVec3(rs);
@@ -45,10 +64,16 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
         const vRH = getVec3(rh);
 
         // Center of the chest
-        const topMid = new THREE.Vector3().addVectors(vLS, vRS).multiplyScalar(0.5);
-        const botMid = new THREE.Vector3().addVectors(vLH, vRH).multiplyScalar(0.5);
-        const chestCenter = new THREE.Vector3().addVectors(topMid, botMid).multiplyScalar(0.5);
-        
+        const topMid = new THREE.Vector3()
+          .addVectors(vLS, vRS)
+          .multiplyScalar(0.5);
+        const botMid = new THREE.Vector3()
+          .addVectors(vLH, vRH)
+          .multiplyScalar(0.5);
+        const chestCenter = new THREE.Vector3()
+          .addVectors(topMid, botMid)
+          .multiplyScalar(0.5);
+
         groupRef.current.position.copy(chestCenter);
 
         // Scale based on shoulder width and torso height
@@ -63,15 +88,14 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
         const xDir = new THREE.Vector3().subVectors(vLS, vRS).normalize();
         // Vector from bottom mid to top mid
         const yDir = new THREE.Vector3().subVectors(topMid, botMid).normalize();
-        
+
         // Z direction is cross product (pointing OUT of the chest towards camera)
         const zDir = new THREE.Vector3().crossVectors(xDir, yDir).normalize();
-        
+
         // Create rotation matrix
         const matrix = new THREE.Matrix4().makeBasis(xDir, yDir, zDir);
         const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
         groupRef.current.quaternion.copy(quaternion);
-
       } else {
         groupRef.current.visible = false;
       }
@@ -88,8 +112,9 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
       */}
       <primitive 
         object={currentGLTF.scene.clone()} 
-        scale={[0.1, 0.1, 0.1]} 
-        position={[0, 0, 0]} 
+        scale={config.scale} 
+        position={config.posOffset}
+        rotation={config.rotOffset}
       />
     </group>
   );
@@ -97,3 +122,4 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
 
 useGLTF.preload('/models/Samurai (1).glb');
 useGLTF.preload('/models/Samurai (2).glb');
+useGLTF.preload('/models/Cyber Samurai.glb');
