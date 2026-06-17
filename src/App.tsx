@@ -446,13 +446,15 @@ export default function App() {
 
         {/* 3D WebGL Canvas for Samurai Armor and Katana */}
         {isLoaded && (
-          <ThreeScene 
-            landmarksRef={landmarksRef}
-            isSamuraiMode={armorId !== 'none'}
-            isKatanaDrawn={katanaId !== 'none'}
-            armorId={armorId}
-            katanaId={katanaId}
-          />
+          <React.Suspense fallback={null}>
+            <ThreeScene 
+              landmarksRef={landmarksRef}
+              isSamuraiMode={armorId !== 'none'}
+              isKatanaDrawn={katanaId !== 'none'}
+              armorId={armorId}
+              katanaId={katanaId}
+            />
+          </React.Suspense>
         )}
 
         {flash && <div className={`flash-vfx ${flash}`} key={Date.now()} />}

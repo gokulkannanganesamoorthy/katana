@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
 
@@ -13,8 +14,12 @@ export const Katana3D: React.FC<Katana3DProps> = ({ landmarksRef, isActive, kata
   const groupRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
-  // Color mapping based on katanaId
-  const color = katanaId === 'red' ? '#ff3333' : katanaId === 'gold' ? '#ffcc00' : '#44aaff';
+  // Load the downloaded models
+  const normalKatana = useGLTF('/models/Katana Japanese Sword.glb');
+  const dragonKatana = useGLTF('/models/Dragon Katana Oni Koroshi.glb');
+  
+  // Select model based on katanaId
+  const currentGLTF = katanaId === 'red' ? dragonKatana : normalKatana;
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -61,28 +66,19 @@ export const Katana3D: React.FC<Katana3DProps> = ({ landmarksRef, isActive, kata
   return (
     <group ref={groupRef} visible={false}>
       {/* 
-        This is a placeholder 3D Katana made of basic shapes.
-        Users can replace this <group> contents with <primitive object={gltf.scene} /> 
-        once they load a real .glb file.
+        We use a scale modifier because models are often huge or tiny.
+        We might need to adjust scale and rotation manually if the downloaded
+        model doesn't have the blade pointing exactly along the Y-axis.
       */}
-      
-      {/* Blade */}
-      <mesh position={[0, 4, 0]}> {/* Shifted up so origin is at the handle */}
-        <cylinderGeometry args={[0.05, 0.1, 8, 8]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} roughness={0.2} metalness={0.8} />
-      </mesh>
-
-      {/* Handle */}
-      <mesh position={[0, -1, 0]}>
-        <cylinderGeometry args={[0.15, 0.15, 2, 8]} />
-        <meshStandardMaterial color="#111" roughness={0.9} />
-      </mesh>
-      
-      {/* Guard (Tsuba) */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.4, 0.4, 0.1, 16]} />
-        <meshStandardMaterial color="#333" metalness={0.9} roughness={0.4} />
-      </mesh>
+      <primitive 
+        object={currentGLTF.scene.clone()} 
+        scale={[2, 2, 2]} 
+        position={[0, 0, 0]} 
+      />
     </group>
   );
 };
+
+// Preload models for faster startup
+useGLTF.preload('/models/Katana Japanese Sword.glb');
+useGLTF.preload('/models/Dragon Katana Oni Koroshi.glb');

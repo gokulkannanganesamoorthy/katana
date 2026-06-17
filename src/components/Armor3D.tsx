@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
 
@@ -13,7 +14,10 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
   const groupRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
-  const color = armorId === 'white' ? '#f0f0f0' : armorId === 'black' ? '#1a1a1a' : '#882222';
+  const armorWhite = useGLTF('/models/Samurai (1).glb');
+  const armorBlack = useGLTF('/models/Samurai (2).glb');
+  
+  const currentGLTF = armorId === 'black' ? armorBlack : armorWhite;
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -79,25 +83,17 @@ export const Armor3D: React.FC<Armor3DProps> = ({ landmarksRef, isActive, armorI
   return (
     <group ref={groupRef} visible={false}>
       {/* 
-        Placeholder 3D Samurai Armor. 
-        Replace with a real GLB file!
+        The model might need default scaling depending on its actual dimensions.
+        We adjust scale and rotation to match the chest tracking.
       */}
-      
-      {/* Chest Plate */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color={color} roughness={0.4} metalness={0.6} />
-      </mesh>
-      
-      {/* Shoulder Pads */}
-      <mesh position={[-0.6, 0.4, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshStandardMaterial color={color} roughness={0.4} metalness={0.6} />
-      </mesh>
-      <mesh position={[0.6, 0.4, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshStandardMaterial color={color} roughness={0.4} metalness={0.6} />
-      </mesh>
+      <primitive 
+        object={currentGLTF.scene.clone()} 
+        scale={[0.1, 0.1, 0.1]} 
+        position={[0, 0, 0]} 
+      />
     </group>
   );
 };
+
+useGLTF.preload('/models/Samurai (1).glb');
+useGLTF.preload('/models/Samurai (2).glb');
