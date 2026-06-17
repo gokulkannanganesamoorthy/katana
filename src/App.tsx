@@ -194,16 +194,29 @@ function drawFrame(
       const hand      = hands[0];
       const wrist     = hand[0];
       const indexBase = hand[5];
-      if (wrist && indexBase) {
+      const pinkyBase = hand[17];
+      if (wrist && indexBase && pinkyBase) {
         const wx    = (1 - wrist.x)     * W;
         const wy    = wrist.y            * H;
         const ibx   = (1 - indexBase.x) * W;
         const iby   = indexBase.y        * H;
-        const angle = Math.atan2(iby - wy, ibx - wx) - Math.PI / 2;
-        const kH    = Math.min(H * 0.55, 420);
+        const pbx   = (1 - pinkyBase.x) * W;
+        const pby   = pinkyBase.y        * H;
+        
+        // Blade points from pinky knuckle (bottom of fist) through index knuckle (top of fist)
+        const dx = ibx - pbx;
+        const dy = iby - pby;
+        const angle = Math.atan2(dy, dx) + Math.PI / 2;
+        
+        // Center the hilt at the middle of the fist
+        const hiltX = (ibx + pbx) / 2;
+        const hiltY = (iby + pby) / 2;
+
+        const kH    = Math.min(H * 0.8, 600); // Made sword larger
         const kW    = kH * 0.25;
+        
         ctx.save();
-        ctx.translate(wx, wy);
+        ctx.translate(hiltX, hiltY);
         ctx.rotate(angle);
         ctx.shadowColor = katanaOpt.glow;
         ctx.shadowBlur  = 35;
