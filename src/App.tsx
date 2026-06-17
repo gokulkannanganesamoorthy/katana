@@ -77,9 +77,16 @@ function getProcessed(img: HTMLImageElement): OffscreenCanvas | null {
     const r = d.data[i],
       g = d.data[i + 1],
       b = d.data[i + 2];
-    // Perceived luminance — black=0 transparent, colored/bright=opaque
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-    d.data[i + 3] = Math.min(255, Math.round(lum * 1.6));
+    // Pure black background removal:
+    // If the pixel is very dark, make it transparent.
+    // Otherwise, keep it fully opaque (255) so the asset isn't dim.
+    const maxVal = Math.max(r, g, b);
+    if (maxVal < 10) {
+      d.data[i + 3] = 0;
+    } else {
+      // Soften the very dark edge pixels slightly for anti-aliasing
+      d.data[i + 3] = Math.min(255, maxVal * 12);
+    }
   }
   pCtx.putImageData(d, 0, 0);
   processedCache[img.src] = off;
@@ -173,7 +180,7 @@ function drawFrame(
         const drawH = bodyH * 2.0;
         // Anchor: top of armor image = shoulder level (armor hangs down from shoulders)
         ctx.save();
-        ctx.globalAlpha = 0.92;
+        ctx.globalAlpha = 1.0; // Fully opaque
         // Draw armor centered horizontally, starting from shoulder level
         ctx.drawImage(
           processedArmor,
@@ -188,43 +195,55 @@ function drawFrame(
   }
 
   // ── 3. Katana ──────────────────────────────────────────────────
-  if (katanaImg && katanaImg.complete && katanaImg.naturalWidth > 0 && hands && hands.length > 0) {
+  if (
+    katanaImg &&
+    katanaImg.complete &&
+    katanaImg.naturalWidth > 0 &&
+    hands &&
+    hands.length > 0
+  ) {
     const processedKatana = getProcessed(katanaImg);
     if (processedKatana) {
-      const hand      = hands[0];
-      const wrist     = hand[0];
+      const hand = hands[0];
+      const wrist = hand[0];
       const indexBase = hand[5];
       const pinkyBase = hand[17];
       if (wrist && indexBase && pinkyBase) {
-        const wx    = (1 - wrist.x)     * W;
-        const wy    = wrist.y            * H;
-        const ibx   = (1 - indexBase.x) * W;
-        const iby   = indexBase.y        * H;
-        const pbx   = (1 - pinkyBase.x) * W;
-        const pby   = pinkyBase.y        * H;
-        
+        const wx = (1 - wrist.x) * W;
+        const wy = wrist.y * H;
+        const ibx = (1 - indexBase.x) * W;
+        const iby = indexBase.y * H;
+        const pbx = (1 - pinkyBase.x) * W;
+        const pby = pinkyBase.y * H;
+
         // Blade points from pinky knuckle (bottom of fist) through index knuckle (top of fist)
         const dx = ibx - pbx;
         const dy = iby - pby;
         const angle = Math.atan2(dy, dx) + Math.PI / 2;
-        
+
         // Center the hilt at the middle of the fist
         const hiltX = (ibx + pbx) / 2;
         const hiltY = (iby + pby) / 2;
 
-        const kH    = Math.min(H * 0.8, 600); // Made sword larger
-        const kW    = kH * 0.25;
-        
+        const kH = Math.min(H * 0.8, 600); // Made sword larger
+        const kW = kH * 0.25;
+
         ctx.save();
         ctx.translate(hiltX, hiltY);
         ctx.rotate(angle);
         ctx.shadowColor = katanaOpt.glow;
-        ctx.shadowBlur  = 35;
+        ctx.shadowBlur = 35;
         ctx.globalAlpha = 1.0;
         ctx.drawImage(processedKatana, -kW / 2, -kH + kH * 0.18, kW, kH);
         ctx.globalAlpha = 0.4;
-        ctx.shadowBlur  = 65;
-        ctx.drawImage(processedKatana, -kW * 0.75, -kH + kH * 0.16, kW * 1.5, kH * 1.04);
+        ctx.shadowBlur = 65;
+        ctx.drawImage(
+          processedKatana,
+          -kW * 0.75,
+          -kH + kH * 0.16,
+          kW * 1.5,
+          kH * 1.04,
+        );
         ctx.restore();
       }
     }
