@@ -61,26 +61,36 @@ function drawFrame(
   const katanaOpt = KATANA_OPTIONS.find(o => o.id === katanaId)!;
   const katanaImg = katanaOpt.src ? loadImg(katanaOpt.src) : null;
 
-  // ── 1. Draw mirrored video to offscreen, then composite ──────────────
-  const offscreen = new OffscreenCanvas(W, H);
-  const offCtx    = offscreen.getContext('2d')!;
-  offCtx.save(); offCtx.scale(-1, 1); offCtx.drawImage(video, -W, 0, W, H); offCtx.restore();
+  // KEY FIX: Draw RAW (non-mirrored) video to offscreen.
+  // The segmentation mask from MediaPipe is also in raw video space,
+  // so mask + video pixel indices always correspond to the same point.
+  const rawOff = new OffscreenCanvas(W, H);
+  const rawCtx = rawOff.getContext('2d')!;
+  rawCtx.drawImage(video, 0, 0, W, H);
 
   if (bgImg && bgImg.complete && bgImg.naturalWidth > 0 && segMask) {
-    // Draw background first
+    // 1a) Background fills the canvas (no orientation needed)
     ctx.drawImage(bgImg, 0, 0, W, H);
 
-    // Build masked person layer
-    const personFrame = offCtx.getImageData(0, 0, W, H);
+    // 1b) Apply mask to the RAW frame — same coordinate space, no mismatch
+    const personFrame = rawCtx.getImageData(0, 0, W, H);
     for (let i = 0; i < segMask.length; i++) {
-      personFrame.data[i * 4 + 3] = segMask[i]; // apply person mask as alpha
+      personFrame.data[i * 4 + 3] = segMask[i];
     }
-    const masked = new OffscreenCanvas(W, H);
-    masked.getContext('2d')!.putImageData(personFrame, 0, 0);
-    ctx.drawImage(masked, 0, 0);
+    const maskedOff = new OffscreenCanvas(W, H);
+    maskedOff.getContext('2d')!.putImageData(personFrame, 0, 0);
+
+    // 1c) Draw masked person MIRRORED onto the main canvas
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(maskedOff, -W, 0, W, H);
+    ctx.restore();
   } else {
-    // No BG swap — just show mirrored webcam
-    ctx.drawImage(offscreen, 0, 0);
+    // No BG swap — mirror the raw video directly
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -W, 0, W, H);
+    ctx.restore();
   }
 
   // ── 2. Samurai Armor ─────────────────────────────────────────────────
