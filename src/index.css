@@ -1,0 +1,276 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Inter:wght@400;600;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --red: #e63946;
+  --cyan: #00f5ff;
+  --gold: #ffd700;
+  --dark: #0a0a0a;
+  --glass: rgba(255,255,255,0.06);
+}
+
+/* Katana AR - Vanilla CSS */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dark);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── App shell ── */
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+/* ── Loading screen ── */
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: radial-gradient(ellipse at center, #0d0d1a 0%, #000 100%);
+}
+
+.loading-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  background: linear-gradient(135deg, var(--gold), var(--red));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-ring {
+  width: 64px;
+  height: 64px;
+  border: 3px solid rgba(255,215,0,0.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ── Video stage ── */
+.video-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.webcam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+}
+
+.ar-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1);
+}
+
+/* ── HUD Overlay ── */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Top-left title */
+.hud-title {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.hud-title h1 {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  background: linear-gradient(135deg, var(--gold), var(--red));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.hud-title .subtitle {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  font-family: 'Inter', sans-serif;
+  margin-top: 0.25rem;
+}
+
+/* Status pills */
+.hud-status {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  pointer-events: none;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(12px);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.5);
+  transition: all 0.3s ease;
+}
+
+.status-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  transition: all 0.3s ease;
+}
+
+.status-pill.active-samurai {
+  border-color: var(--red);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(230,57,70,0.4), inset 0 0 20px rgba(230,57,70,0.1);
+}
+.status-pill.active-samurai .dot {
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+}
+
+.status-pill.active-katana {
+  border-color: var(--cyan);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(0,245,255,0.4), inset 0 0 20px rgba(0,245,255,0.1);
+}
+.status-pill.active-katana .dot {
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+/* Instructions */
+.hud-instructions {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 220px;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.6);
+}
+
+.instruction-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+/* Flash VFX overlay */
+.flash-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.flash-overlay.flash-red {
+  background: radial-gradient(ellipse at center, rgba(230,57,70,0.35) 0%, transparent 70%);
+  animation: flash 0.5s ease-out forwards;
+}
+
+.flash-overlay.flash-cyan {
+  background: radial-gradient(ellipse at center, rgba(0,245,255,0.35) 0%, transparent 70%);
+  animation: flash 0.5s ease-out forwards;
+}
+
+/* ── Debug panel ── */
+.debug-panel {
+  position: absolute;
+  bottom: 5rem;
+  right: 1.5rem;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: rgba(255,255,255,0.5);
+  pointer-events: none;
+  line-height: 1.8;
+  min-width: 180px;
+}
+
+.debug-panel span { color: var(--cyan); font-weight: bold; }
+
+/* ── Animations ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
