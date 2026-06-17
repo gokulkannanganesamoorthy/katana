@@ -35,8 +35,7 @@ export const useMediaPipe = (): MediaPipeReady => {
         setLoadingStatus('Loading hand tracker…');
         const hl = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            modelAssetPath: '/models/hand_landmarker.task',
             delegate: 'GPU',
           },
           runningMode: 'VIDEO',
@@ -49,8 +48,7 @@ export const useMediaPipe = (): MediaPipeReady => {
         setLoadingStatus('Loading pose model…');
         const pl = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+            modelAssetPath: '/models/pose_landmarker_lite.task',
             delegate: 'GPU',
           },
           runningMode: 'VIDEO',
@@ -62,8 +60,7 @@ export const useMediaPipe = (): MediaPipeReady => {
         setLoadingStatus('Loading background segmenter…');
         const seg = await ImageSegmenter.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
+            modelAssetPath: '/models/selfie_segmenter.tflite',
             delegate: 'GPU',
           },
           runningMode: 'VIDEO',
